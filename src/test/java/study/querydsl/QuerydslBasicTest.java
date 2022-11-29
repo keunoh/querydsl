@@ -16,6 +16,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.test.annotation.Commit;
 import org.springframework.transaction.annotation.Transactional;
 import study.querydsl.dto.MemberDto;
 import study.querydsl.dto.QMemberDto;
@@ -653,6 +654,56 @@ public class QuerydslBasicTest {
 
     private BooleanExpression isServiceable(String usernameCond, Integer ageCond) {
         return usernameEq(usernameCond).and(ageEq(ageCond));
+    }
+
+    //    @Commit
+    @Test
+    public void bulkUpdate() {
+
+        //member1 = 10 -> 비회원
+        //member2 = 20 -> 비회원
+        //member3 = 30 -> 유지
+        //member4 = 40 -> 유지
+
+        //영속성 컨텍스트를 변화시키는 것이아닌
+        //DB에 바로 반영해 버리기 때문에 DB와 EM는 불일치한다.
+
+        long count = queryFactory
+                .update(member)
+                .set(member.username, "비회원")
+                .where(member.age.lt(28))
+                .execute();
+        //벌크연산 후에는 초기화를 해주는게 낫다
+        em.flush();
+        em.clear();
+
+        //db에서 해당 데이터를 가져오지만
+        //영속성 컨텍스트에 이미 데이터가 존재하므로
+        //덮어쓰기하지않는다. 즉, 반영된 db데이터와
+        //영속성컨텍스트 데이터가 다르다.
+
+        List<Member> result = queryFactory
+                .selectFrom(member)
+                .fetch();
+        for (Member member1 : result) {
+            System.out.println("member1 = " + member1);
+        }
+    }
+
+    @Test
+    public void bulkAdd() {
+        long count = queryFactory
+                .update(member)
+                .set(member.age, member.age.add(1))
+                .execute();
+    }
+
+    @Test
+    public void bulkDelete() {
+        long count = queryFactory
+                .delete(member)
+                .where(member.age.gt(18))
+                .execute();
     }
 }
 
